@@ -24,9 +24,6 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Material.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -47,16 +44,16 @@
     <ClInclude Include="Scene.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="cuda_compute.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Material.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="cuda_global.h">
+    <ClInclude Include="Object.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Object.h">
+    <ClInclude Include="global_const.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="collision_compute.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -69,7 +66,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="cuda_compute.cpp">
+    <CudaCompile Include="Scene.cpp">
+      <Filter>源文件</Filter>
+    </CudaCompile>
+    <CudaCompile Include="collision_compute.cpp">
       <Filter>源文件</Filter>
     </CudaCompile>
   </ItemGroup>

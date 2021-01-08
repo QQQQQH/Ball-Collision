@@ -6,7 +6,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "cuda_compute.h"
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+
+#include "collision_compute.h"
 #include "Object.h"
 #include "Shader.h"
 
@@ -15,19 +18,77 @@ using namespace std;
 class Scene {
 	static const int COLOR_NUM = 10;
 	static const float color[COLOR_NUM][3];
+
+	const unsigned int
+		LEN = 3,
+		NUM_OBJECT,
+		OBJECT_SIZE,
+		CELL_SIZE;
+
+	const float
+		MIN_RADIUS,
+		MAX_RADIUS,
+		MAX_DIM;
+
+
+	// host
+	unsigned int
+		numCells,
+		cntCollisions,
+		cntTests,
+		* collisionMatrix;
+
 	float
 		* positions,
 		* velocities,
 		* radius,
 		* elasticities,
 		* masses;
+
 	int* colorNums;
+
+	// device
+	float
+		* dPositions,
+		* dVelocities,
+		* dRadius,
+		* dElasticities,
+		* dMasses,
+
+		* dNewPositions,
+		* dNewVelocities;
+
+	unsigned int
+		* dTemp,
+		* dCollisionMatrix;
+
+	unsigned int
+		* dCells,
+		* dCellsTmp,
+		* dObjects,
+		* dObjectsTmp,
+		* dRadices,
+		* dRadixSums;
+
 
 	Material pureColorMaterial;
 
 	Sphere* balls;
-	Plane* floor;
+	Plane* floorPlane;
 
+	void set_scene();
+
+	void device_malloc();
+	void copy_to_device();
+	void copy_to_host();
+	void update_scene_on_device(float dt);
+
+	void init_cells();
+	void sort_cells();
+	void cells_collide();
+	void set_new_p_and_v();
+
+	void test();
 public:
 	glm::vec3
 		lightPos = glm::vec3(5.0f, 2.0f, 5.0f),
@@ -40,9 +101,8 @@ public:
 		linear = 0.014f,
 		quadratic = 0.0007f;
 
-	Scene();
+	Scene(const unsigned int NUM_OBJECT0 = 27, const float MAX_RADIUS0 = 0.5);
 	void set_vertices_data();
-	void set_scene();
 	void update(float dt);
 	void draw(Shader& shader);
 };

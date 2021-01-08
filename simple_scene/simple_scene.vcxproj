@@ -22,18 +22,18 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="Object.cpp" />
-    <CudaCompile Include="cuda_compute.cpp" />
+    <CudaCompile Include="collision_compute.cpp" />
     <ClCompile Include="main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Material.cpp" />
-    <ClCompile Include="Scene.cpp" />
+    <CudaCompile Include="Scene.cpp" />
     <ClCompile Include="Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="cuda_global.h" />
-    <ClInclude Include="cuda_compute.h" />
+    <ClInclude Include="global_const.h" />
+    <ClInclude Include="collision_compute.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Shader.h" />
