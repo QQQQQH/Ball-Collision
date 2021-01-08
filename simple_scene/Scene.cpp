@@ -1,12 +1,15 @@
+#include <chrono>
 #include "Scene.h"
+
+using namespace chrono;
 
 __constant__ float
 G = 9.8,
 EPS = 1e-5;
 __constant__ float PLANE[3][2] = {
-	0,10,
-	0,10000,
-	0,10
+	0, 10,
+	0, 10000,
+	0, 10
 };
 
 const float Scene::color[COLOR_NUM][3] = {
@@ -22,18 +25,22 @@ const float Scene::color[COLOR_NUM][3] = {
 	1.0, 0.2980392156862745, 0.4235294117647059
 };
 
-Scene::Scene(const unsigned int NUM_OBJECT0, const float MAX_RADIUS0) :
-	NUM_OBJECT(NUM_OBJECT0),
+Scene::Scene(const int MODE0, const unsigned int NUM_OBJECT0,
+	const float MAX_RADIUS0, const unsigned int LEN0) :
+	MODE(MODE0), NUM_OBJECT(NUM_OBJECT0),
 	OBJECT_SIZE(3 * NUM_OBJECT0 * sizeof(float)),
 	CELL_SIZE(8 * NUM_OBJECT0 * sizeof(unsigned int)),
-	MAX_RADIUS(MAX_RADIUS0), MIN_RADIUS(0.6 * MAX_RADIUS0), MAX_DIM(8 * MAX_RADIUS0) {
+	MAX_RADIUS(MAX_RADIUS0), MIN_RADIUS(0.6 * MAX_RADIUS0), MAX_DIM(5 * MAX_RADIUS0),
+	LEN(LEN0) {
 
 	positions = (float*) malloc(OBJECT_SIZE);
 	velocities = (float*) malloc(OBJECT_SIZE);
 	radius = (float*) malloc(OBJECT_SIZE);
 	elasticities = (float*) malloc(OBJECT_SIZE);
 	masses = (float*) malloc(OBJECT_SIZE);
+	collisionMatrix = (unsigned int*) malloc(NUM_OBJECT * NUM_OBJECT * sizeof(unsigned int));
 	colorNums = (int*) malloc(OBJECT_SIZE);
+
 
 	device_malloc();
 	set_scene();
@@ -51,27 +58,39 @@ void Scene::set_vertices_data() {
 
 void Scene::set_scene() {
 	const int MAX_VELOCITY = 50;
-	const float
-		MIN_RADIUS = 0.3,
-		MAX_RADIUS = 0.5;
-
-	//int flag = 0;
-	int flag = 1;
 
 	// set position, velocity, radius, elasticity, mass and color of the balls
 	for (int i = 0; i < NUM_OBJECT; ++i) {
-		// position
-		positions[i * 3] = i % LEN + 4;
-		positions[i * 3 + 1] = 3 + i / (LEN * LEN);
-		positions[i * 3 + 2] = (i / LEN) % LEN + 4;
 
 		// velocity
-		velocities[i * 3 + 1] = 0;
+		velocities[i * DIM + 1] = 0;
 
-		if (flag) {
+		switch (MODE) {
+		case 0:
+			// position
+			positions[i * DIM] = i % LEN + 0.5;
+			positions[i * DIM + 1] = 3 + i / (LEN * LEN);
+			positions[i * DIM + 2] = (i / LEN) % LEN + 0.5;
+
 			// velocity
-			velocities[i * 3] = -MAX_VELOCITY + (float) (rand() % 100) / 100 * 2 * MAX_VELOCITY;
-			velocities[i * 3 + 2] = -MAX_VELOCITY + (float) (rand() % 100) / 100 * 2 * MAX_VELOCITY;
+			velocities[i * DIM] = 0;
+			velocities[i * DIM + 2] = 0;
+
+			// radius
+			radius[i] = MIN_RADIUS;
+
+			// elasticity
+			elasticities[i] = 0.9;
+			break;
+		case 1:
+			// position
+			positions[i * DIM] = i % LEN + 4;
+			positions[i * DIM + 1] = 3 + i / (LEN * LEN);
+			positions[i * DIM + 2] = (i / LEN) % LEN + 4;
+
+			// velocity
+			velocities[i * DIM] = -MAX_VELOCITY + (float) (rand() % 100) / 100 * 2 * MAX_VELOCITY;
+			velocities[i * DIM + 2] = -MAX_VELOCITY + (float) (rand() % 100) / 100 * 2 * MAX_VELOCITY;
 			//printf("%d %f %f %f\n", i, velocities[i * DIM], velocities[i * DIM + 1], velocities[i * DIM + 2]);
 
 			// radius
@@ -79,18 +98,17 @@ void Scene::set_scene() {
 
 			// elasticity
 			elasticities[i] = 0.8 + (float) (rand() % 100) / 1000;
-		}
-		else {
-			// velocity
-			velocities[i * 3] = 0;
-			velocities[i * 3 + 2] = 0;
-
+			break;
+		case 2:
+			// position
+			for (int j = 0; j < DIM; ++j) {
+				positions[i * DIM + j] = (float) (rand() % 100) / 100 * HIGH_BOUND;
+			}
 			// radius
-			radius[i] = MIN_RADIUS;
-
-			// elasticity
-			elasticities[i] = 0.8;
-
+			radius[i] = MIN_RADIUS + (MAX_RADIUS - MIN_RADIUS) * (float) (rand() % 100) / 100;
+			break;
+		default:
+			break;
 		}
 
 		// mass
@@ -122,8 +140,6 @@ void Scene::device_malloc() {
 	cudaMalloc((void**) &dRadixSums, NUM_RADICES * sizeof(unsigned int));
 
 	cudaMalloc((void**) &dCollisionMatrix, NUM_OBJECT * NUM_OBJECT * sizeof(unsigned int));
-
-	collisionMatrix = (unsigned int*) malloc(NUM_OBJECT * NUM_OBJECT * sizeof(unsigned int));
 }
 
 void Scene::copy_to_device() {
@@ -175,7 +191,7 @@ void Scene::sort_cells() {
 				dCells, dRadices, cellsPerGroup, i, NUM_OBJECT * DIM_2);
 		radix_sum_kernel << <NUM_BLOCKS_SORT, GROUPS_PER_BLOCK* THREADS_PER_GROUP,
 			PADDED_GROUPS * sizeof(unsigned int) >> > (dRadices, dRadixSums);
-		radix_order_kernel << <NUM_BLOCKS_SORT, GROUPS_PER_BLOCK* THREADS_PER_GROUP,
+		radix_order_kernel << < NUM_BLOCKS_SORT, GROUPS_PER_BLOCK* THREADS_PER_GROUP,
 			NUM_RADICES * sizeof(unsigned int) + GROUPS_PER_BLOCK *
 			NUM_RADICES * sizeof(unsigned int) >> > (
 				dCells, dObjects, dCellsTmp, dObjectsTmp, dRadices, dRadixSums,
@@ -219,7 +235,35 @@ void Scene::set_new_p_and_v() {
 	cudaMemcpy(dVelocities, dNewVelocities, OBJECT_SIZE, cudaMemcpyDeviceToDevice);
 }
 
-void Scene::test() {}
+void Scene::get_cnt_collision() {
+	cudaMemcpy(collisionMatrix, dCollisionMatrix, NUM_OBJECT * NUM_OBJECT * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+	cntCollisions = 0;
+	for (int i = 0; i < NUM_OBJECT; ++i) {
+		for (int j = i + 1; j < NUM_OBJECT; ++j) {
+			if (collisionMatrix[i * NUM_OBJECT + j]) {
+				++cntCollisions;
+			}
+		}
+	}
+}
+
+void Scene::naive_collide() {
+	cntCollisions = cntTests = 0;
+	for (int i = 0; i < NUM_OBJECT; ++i) {
+		for (int j = i + 1; j < NUM_OBJECT; ++j) {
+			++cntTests;
+			float d = 0, dx;
+			for (int k = 0; k < DIM; ++k) {
+				dx = positions[i * DIM + k] - positions[j * DIM + k];
+				d += dx * dx;
+			}
+			float dp = radius[i] + radius[j];
+			if (d < dp * dp) {
+				++cntCollisions;
+			}
+		}
+	}
+}
 
 void Scene::update(float dt) {
 	update_scene_on_device(dt);
@@ -249,9 +293,9 @@ void Scene::draw(Shader& shader) {
 
 		glm::mat4 model(1.0f);
 		model = glm::translate(model, glm::vec3(
-			positions[i * 3],
-			positions[i * 3 + 1],
-			positions[i * 3 + 2]));
+			positions[i * DIM],
+			positions[i * DIM + 1],
+			positions[i * DIM + 2]));
 		model = glm::scale(model, glm::vec3(radius[i]));
 		shader.setMat4("model", model);
 
@@ -267,4 +311,31 @@ void Scene::draw(Shader& shader) {
 
 		balls->draw();
 	}
+}
+
+void Scene::test() {
+	// Naive Collision Algorithm
+	auto start = system_clock::now();
+	naive_collide();
+	auto end = system_clock::now();
+	auto duration1 = duration_cast<microseconds>(end - start);
+	const double cntTest1 = cntTests, time1 = double(duration1.count()) * microseconds::period::num / microseconds::period::den;
+	cout << "----------\nNaive Algorithm:\n"
+		<< "Test Times=" << cntTests << "\n"
+		<< "Time Cost=" << time1
+		<< "s\n----------\n" << endl;
+
+	// My Collision Algorithm
+	start = system_clock::now();
+	init_cells();
+	sort_cells();
+	cells_collide();
+	end = system_clock::now();
+	auto duration2 = duration_cast<microseconds>(end - start);
+	const double cntTest2 = cntTests, time2 = double(duration2.count()) * microseconds::period::num / microseconds::period::den;
+	cout << "----------\nMy Algorithm:\n"
+		<< "Test Times=" << cntTests << "(" << cntTest2 / cntTest1 * 100 << "%)\n"
+		<< "Time Cost=" << time2
+		<< "s(" << time2 / time1 * 100 << "%)\n----------\n" << endl;
+
 }

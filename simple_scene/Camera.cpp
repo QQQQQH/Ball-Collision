@@ -1,11 +1,14 @@
+#include <iostream>
 #include "Camera.h"
+
+using namespace std;
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM) {
 	Position = position;
 	WorldUp = up;
 	Yaw = yaw;
 	Pitch = pitch;
-	updateCameraVectors();
+	update_camera_vectors();
 }
 
 Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM) {
@@ -13,14 +16,22 @@ Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float u
 	WorldUp = glm::vec3(upX, upY, upZ);
 	Yaw = yaw;
 	Pitch = pitch;
-	updateCameraVectors();
+	update_camera_vectors();
 }
 
-glm::mat4 Camera::GetViewMatrix() {
+glm::mat4 Camera::get_view_matrix() {
 	return glm::lookAt(Position, Position + Front, Up);
 }
 
-void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime) {
+void Camera::set(glm::vec3 pos, glm::vec3 up, float yaw, float pitch) {
+	Position = pos;
+	WorldUp = up;
+	Yaw = yaw;
+	Pitch = pitch;
+	update_camera_vectors();
+}
+
+void Camera::process_keyboard(Camera_Movement direction, float deltaTime) {
 	float velocity = MovementSpeed * deltaTime;
 	switch (direction) {
 	case FORWARD:
@@ -44,7 +55,7 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime) {
 	}
 }
 
-void Camera::ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch) {
+void Camera::process_mouse_movement(float xoffset, float yoffset, GLboolean constrainPitch) {
 	xoffset *= MouseSensitivity;
 	yoffset *= MouseSensitivity;
 
@@ -58,10 +69,10 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset, GLboolean constr
 			Pitch = -89.0f;
 	}
 
-	updateCameraVectors();
+	update_camera_vectors();
 }
 
-void Camera::ProcessMouseScroll(float yoffset) {
+void Camera::process_mouse_scroll(float yoffset) {
 	Zoom -= (float) yoffset;
 	if (Zoom < 1.0f)
 		Zoom = 1.0f;
@@ -69,7 +80,7 @@ void Camera::ProcessMouseScroll(float yoffset) {
 		Zoom = 45.0f;
 }
 
-void Camera::updateCameraVectors() {
+void Camera::update_camera_vectors() {
 	glm::vec3 front;
 	front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
 	front.y = sin(glm::radians(Pitch));

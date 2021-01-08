@@ -3,7 +3,7 @@
 
 __constant__ float
 G = 9.8,
-EPS = 1e-5;
+EPS = 1e-6;
 __constant__ float PLANE[3][2] = {
 	0,10,
 	0,10000,
@@ -135,9 +135,10 @@ __global__ void update_scene_kernel(float* dPositions, float* dVelocities,
 		}
 
 		// gravity
-		if (!hitFloor) {
-			dVelocities[i * DIM + 1] -= G * dt;
-		}
+		//if (!hitFloor) {
+		//	dVelocities[i * DIM + 1] -= G * dt;
+		//}
+		dVelocities[i * DIM + 1] -= G * dt;
 	}
 }
 
@@ -515,13 +516,12 @@ __global__ void set_new_p_and_v_kernel(float* positions, float* velocities,
 					}
 					d = sqrt(d);
 					float dp = radius[i] + radius[j];
-					float delta = dp - d + EPS;
+					float delta = (dp - d + EPS) / 2;
 					float ratio = (d + delta) / d;
 
 					for (int k = 0; k < DIM; ++k) {
 						newPosAndVel[threadIdx.x * DIM_P_AND_V + k] +=
-							positions[j * DIM + k] +
-							(positions[i * DIM + k] - positions[j * DIM + k]) * ratio;
+							(positions[j * DIM + k] + (positions[i * DIM + k] - positions[j * DIM + k]) * ratio);
 					}
 				}
 				else {

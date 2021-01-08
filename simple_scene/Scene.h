@@ -20,7 +20,7 @@ class Scene {
 	static const float color[COLOR_NUM][3];
 
 	const unsigned int
-		LEN = 3,
+		LEN,
 		NUM_OBJECT,
 		OBJECT_SIZE,
 		CELL_SIZE;
@@ -30,6 +30,7 @@ class Scene {
 		MAX_RADIUS,
 		MAX_DIM;
 
+	const int MODE;
 
 	// host
 	unsigned int
@@ -88,7 +89,8 @@ class Scene {
 	void cells_collide();
 	void set_new_p_and_v();
 
-	void test();
+	void get_cnt_collision();
+	void naive_collide();
 public:
 	glm::vec3
 		lightPos = glm::vec3(5.0f, 2.0f, 5.0f),
@@ -101,9 +103,12 @@ public:
 		linear = 0.014f,
 		quadratic = 0.0007f;
 
-	Scene(const unsigned int NUM_OBJECT0 = 27, const float MAX_RADIUS0 = 0.5);
+	Scene(const int MODE = 0, const unsigned int NUM_OBJECT0 = 27,
+		const float MAX_RADIUS0 = 0.5, const unsigned int LEN = 3);
 	void set_vertices_data();
 	void update(float dt);
 	void draw(Shader& shader);
+
+	void test();
 };
 

@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -21,15 +22,11 @@ const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 
 // set cameare
-Camera camera(glm::vec3(16.0f, 16.0f, 16.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -45.0f);
-//Camera camera(glm::vec3(3.0f, 2.0f, -3.0f), glm::vec3(0.0f, 1.0f, 0.0f), 45.0f, -0.0f);
+Camera camera;
 
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
-
-// set scene
-Scene scene;
 
 // set time
 float deltaTime = 0.0f;
@@ -43,16 +40,40 @@ void processInput(GLFWwindow* window);
 
 GLFWwindow* init_GLFW();
 
-int main() {
+void test(const int NUM) {
+	const int MODE = 2;
+	Scene scene(MODE, NUM);
+	scene.test();
+}
+
+void show_animation(const int MODE) {
 	// initialization
 	GLFWwindow* window = init_GLFW();
 	if (!window) {
 		glfwTerminate();
-		return -1;
+		exit(-1);
+	}
+
+	int numObject, len;
+	float maxRadius = 0.5;
+	if (MODE == 0) {
+		numObject = 1000;
+		len = 10;
+	}
+	else {
+		numObject = 27;
+		len = 3;
 	}
 
 	// set scene
+	Scene scene(MODE, numObject, maxRadius, len);
 	scene.set_vertices_data();
+
+	// set camera
+	camera.set(glm::vec3(16.0f, 16.0f, 16.0f), glm::vec3(0.0f, 1.0f, 0.0f), -135.0f, -45.0f);
+	lastX = SCR_WIDTH / 2.0f;
+	lastY = SCR_HEIGHT / 2.0f;
+	firstMouse = true;
 
 	// set shader light
 	Shader shader("shader.vs", "shader.fs");
@@ -87,7 +108,7 @@ int main() {
 		shader.setVec3("viewPos", camera.Position);
 		glm::mat4 projection = glm::perspective(
 			glm::radians(camera.Zoom), (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-		glm::mat4 view = camera.GetViewMatrix();
+		glm::mat4 view = camera.get_view_matrix();
 		shader.setMat4("projection", projection);
 		shader.setMat4("view", view);
 
@@ -102,6 +123,40 @@ int main() {
 	}
 
 	glfwTerminate();
+}
+
+int main() {
+	while (true) {
+		system("cls");
+		cout << "Please Select:\n"
+			<< "0. Animation_0\n"
+			<< "1. Animation_1\n"
+			<< "2. Test\n" << endl;
+		string in;
+		cin >> in;
+		cout << endl;
+		if (in == "0") {
+			show_animation(0);
+		}
+		else if (in == "1") {
+			show_animation(1);
+		}
+		else if (in == "2") {
+			while (true) {
+				system("cls");
+				cout << "Please Input Number of the Balls:\n" << endl;
+				int num;
+				cin >> num;
+				cout << "Number of the Balls is: " << num << endl << endl;
+				if (num > 0) {
+					test(num);
+					cout << "Press Any Key to Go Back" << endl;
+					system("pause");
+					continue;
+				}
+			}
+		}
+	}
 	return 0;
 }
 
@@ -111,22 +166,22 @@ void processInput(GLFWwindow* window) {
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		camera.ProcessKeyboard(FORWARD, deltaTime * 2);
+		camera.process_keyboard(FORWARD, deltaTime * 2);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		camera.ProcessKeyboard(BACKWARD, deltaTime * 2);
+		camera.process_keyboard(BACKWARD, deltaTime * 2);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-		camera.ProcessKeyboard(LEFT, deltaTime * 2);
+		camera.process_keyboard(LEFT, deltaTime * 2);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-		camera.ProcessKeyboard(RIGHT, deltaTime * 2);
+		camera.process_keyboard(RIGHT, deltaTime * 2);
 	}
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-		camera.ProcessKeyboard(UP, deltaTime * 2);
+		camera.process_keyboard(UP, deltaTime * 2);
 	}
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		camera.ProcessKeyboard(DOWN, deltaTime * 2);
+		camera.process_keyboard(DOWN, deltaTime * 2);
 	}
 }
 
@@ -148,11 +203,11 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	lastX = xpos;
 	lastY = ypos;
 
-	camera.ProcessMouseMovement(xoffset, yoffset);
+	camera.process_mouse_movement(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-	camera.ProcessMouseScroll(yoffset);
+	camera.process_mouse_scroll(yoffset);
 }
 
 GLFWwindow* init_GLFW() {
