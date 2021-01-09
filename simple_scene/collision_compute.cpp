@@ -10,68 +10,64 @@ __constant__ float PLANE[3][2] = {
 	0,10
 };
 
-__device__ void d_sum_reduce(unsigned int* values, unsigned int* out) {
-	// wait for the whole array to be populated
+__device__ void d_sum_reduce(unsigned int* in, unsigned int* out) {
 	__syncthreads();
 
-	// sum by reduction, using half the threads in each subsequent iteration
-	unsigned int threads = blockDim.x;
-	unsigned int half = threads / 2;
+	// sum by reduction
+	unsigned int
+		threads = blockDim.x,
+		half = threads / 2;
 
 	while (half) {
 		if (threadIdx.x < half) {
 			for (int k = threadIdx.x + half; k < threads; k += half) {
-				values[threadIdx.x] += values[k];
+				in[threadIdx.x] += in[k];
 			}
 
 			threads = half;
 		}
 
 		half /= 2;
-
-		// make sure all the threads are on the same iteration
 		__syncthreads();
 	}
 
 	// only let one thread update the current sum
 	if (!threadIdx.x) {
-		atomicAdd(out, values[0]);
+		atomicAdd(out, in[0]);
 	}
 }
 
-__device__ void d_sum_reduce(float* values, float* out, unsigned int dim = 1) {
-	// wait for the whole array to be populated
+__device__ void d_sum_reduce(float* in, float* out, unsigned int dim = 1) {
 	__syncthreads();
 
-	// sum by reduction, using half the threads in each subsequent iteration
-	unsigned int threads = blockDim.x;
-	unsigned int half = threads / 2;
+	// sum by reduction
+	unsigned int
+		threads = blockDim.x,
+		half = threads / 2;
 
 	while (half) {
 		if (threadIdx.x < half) {
 			for (int i = threadIdx.x + half; i < threads; i += half) {
 				for (int j = 0; j < dim; ++j) {
-					values[threadIdx.x * dim + j] += values[i * dim + j];
+					in[threadIdx.x * dim + j] += in[i * dim + j];
 				}
 			}
 			threads = half;
 		}
 		half /= 2;
-		// make sure all the threads are on the same iteration
 		__syncthreads();
 	}
 
 	// only let one thread update the current sum
-	if (!threadIdx.x && values != out) {
+	if (!threadIdx.x && in != out) {
 		for (int i = 0; i < dim; ++i) {
-			atomicAdd(out + i, values[i]);
+			atomicAdd(out + i, in[i]);
 		}
 	}
 }
 
-__device__ void d_prefix_sum(unsigned int* values, unsigned int n) {
-	int offset = 1;
-	int a;
+__device__ void d_prefix_sum(unsigned int* a, unsigned int n) {
+	int offset = 1, t;
 	unsigned int temp;
 
 	// upsweep
@@ -79,15 +75,15 @@ __device__ void d_prefix_sum(unsigned int* values, unsigned int n) {
 		__syncthreads();
 
 		if (threadIdx.x < d) {
-			a = (threadIdx.x * 2 + 1) * offset - 1;
-			values[a + offset] += values[a];
+			t = (threadIdx.x * 2 + 1) * offset - 1;
+			a[t + offset] += a[t];
 		}
 
 		offset *= 2;
 	}
 
 	if (!threadIdx.x) {
-		values[n - 1] = 0;
+		a[n - 1] = 0;
 	}
 
 	// downsweep
@@ -96,10 +92,10 @@ __device__ void d_prefix_sum(unsigned int* values, unsigned int n) {
 		offset /= 2;
 
 		if (threadIdx.x < d) {
-			a = (threadIdx.x * 2 + 1) * offset - 1;
-			temp = values[a];
-			values[a] = values[a + offset];
-			values[a + offset] += temp;
+			t = (threadIdx.x * 2 + 1) * offset - 1;
+			temp = a[t];
+			a[t] = a[t + offset];
+			a[t + offset] += temp;
 		}
 	}
 }
@@ -145,19 +141,16 @@ __global__ void update_scene_kernel(float* dPositions, float* dVelocities,
 __global__ void init_cells_kernel(unsigned int* cells, unsigned int* objects,
 	float* positions, float* radius, unsigned int* cellCount,
 	const unsigned int NUM_OBJECT, const float MAX_DIM) {
+
 	extern __shared__ unsigned int t[];
 	unsigned int count = 0;
 
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	for (; i < NUM_OBJECT; i += gridDim.x * blockDim.x) {
-		unsigned int hash = 0;
-		unsigned int sides = 0;
-		int h = i * DIM_2;
-		int m = 1;
-		int q;
-		int r;
-		float x;
-		float a;
+		unsigned int hash = 0, sides = 0;
+		int h = i * DIM_2, m = 1;
+		int q, r;
+		float x, a;
 
 		// find home cell
 		for (int j = 0; j < DIM; ++j) {
@@ -240,11 +233,11 @@ __global__ void init_cells_kernel(unsigned int* cells, unsigned int* objects,
 __global__ void radix_tabulate_kernel(unsigned int* keys, unsigned int* radices,
 	unsigned int cellsPerGroup, int shift, unsigned int n) {
 
-
 	extern __shared__ unsigned int s[];
-	int group = threadIdx.x / THREADS_PER_GROUP;
-	int group_start = (blockIdx.x * GROUPS_PER_BLOCK + group) * cellsPerGroup;
-	int group_end = group_start + cellsPerGroup;
+	int
+		group = threadIdx.x / THREADS_PER_GROUP,
+		group_start = (blockIdx.x * GROUPS_PER_BLOCK + group) * cellsPerGroup,
+		group_end = group_start + cellsPerGroup;
 	unsigned int k;
 
 	// initialize shared memory
@@ -280,9 +273,11 @@ __global__ void radix_tabulate_kernel(unsigned int* keys, unsigned int* radices,
 }
 
 __global__ void radix_sum_kernel(unsigned int* radices, unsigned int* radixSums) {
+
 	extern __shared__ unsigned int s[];
-	unsigned int total;
-	unsigned int left = 0;
+	unsigned int
+		total,
+		left = 0;
 	unsigned int* radix = radices + blockIdx.x * NUM_RADICES * GROUPS_PER_BLOCK;
 
 	for (int j = 0; j < NUM_RADICES / NUM_BLOCKS_SORT; ++j) {
@@ -339,11 +334,12 @@ __global__ void radix_order_kernel(unsigned int* keysIn, unsigned int* valuesIn,
 	unsigned int cellsPerGroup, int shift, unsigned int n) {
 
 	extern __shared__ unsigned int s[];
-	unsigned int* t = s + NUM_RADICES;
-	int group = threadIdx.x / THREADS_PER_GROUP;
-	int group_start = (blockIdx.x * GROUPS_PER_BLOCK + group) * cellsPerGroup;
-	int group_end = group_start + cellsPerGroup;
 	unsigned int k;
+	unsigned int* t = s + NUM_RADICES;
+	int
+		group = threadIdx.x / THREADS_PER_GROUP,
+		group_start = (blockIdx.x * GROUPS_PER_BLOCK + group) * cellsPerGroup,
+		group_end = group_start + cellsPerGroup;
 
 	// initialize shared memory
 	for (int i = threadIdx.x; i < NUM_RADICES; i += blockDim.x) {
