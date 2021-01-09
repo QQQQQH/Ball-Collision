@@ -34,9 +34,9 @@ class Scene {
 
 	// host
 	unsigned int
-		numCells,
-		cntCollisions,
-		cntTests,
+		numCells = 0,
+		cntCollisions = 0,
+		cntTests = 0,
 		* collisionMatrix;
 
 	float
@@ -105,6 +105,7 @@ public:
 
 	Scene(const int MODE = 0, const unsigned int NUM_OBJECT0 = 27,
 		const float MAX_RADIUS0 = 0.5, const unsigned int LEN = 3);
+	~Scene();
 	void set_vertices_data();
 	void update(float dt);
 	void draw(Shader& shader);

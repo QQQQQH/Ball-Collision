@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Shader.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -66,10 +63,13 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="Scene.cpp">
+    <CudaCompile Include="collision_compute.cpp">
       <Filter>源文件</Filter>
     </CudaCompile>
-    <CudaCompile Include="collision_compute.cpp">
+    <CudaCompile Include="Shader.cpp">
+      <Filter>源文件</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Scene.cpp">
       <Filter>源文件</Filter>
     </CudaCompile>
   </ItemGroup>

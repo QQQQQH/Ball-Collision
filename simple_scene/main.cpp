@@ -148,7 +148,7 @@ int main() {
 				int num;
 				cin >> num;
 				cout << "Number of the Balls is: " << num << endl << endl;
-				if (num > 0) {
+				if (num > 0 && num <= 10000) {
 					test(num);
 					cout << "Press Any Key to Go Back" << endl;
 					system("pause");

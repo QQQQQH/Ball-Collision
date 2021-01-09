@@ -51,6 +51,34 @@ Scene::Scene(const int MODE0, const unsigned int NUM_OBJECT0,
 	floorPlane->material.set_color(glm::vec3(1, 1, 1));
 }
 
+Scene::~Scene() {
+	free(positions);
+	free(velocities);
+	free(radius);
+	free(elasticities);
+	free(masses);
+	free(collisionMatrix);
+	free(colorNums);
+
+	cudaFree(dPositions);
+	cudaFree(dVelocities);
+	cudaFree(dRadius);
+	cudaFree(dElasticities);
+	cudaFree(dMasses);
+
+	cudaFree(dNewPositions);
+	cudaFree(dNewVelocities);
+
+	cudaFree(dTemp);
+	cudaFree(dCells);
+	cudaFree(dCellsTmp);
+	cudaFree(dObjects);
+	cudaFree(dObjectsTmp);
+	cudaFree(dRadices);
+	cudaFree(dRadixSums);
+	cudaFree(dCollisionMatrix);
+}
+
 void Scene::set_vertices_data() {
 	balls->set_vertices_data();
 	floorPlane->set_vertices_data();
@@ -324,6 +352,8 @@ void Scene::test() {
 		<< "Test Times=" << cntTests << "\n"
 		<< "Time Cost=" << time1
 		<< "s\n----------\n" << endl;
+
+	cntTests = 0;
 
 	// My Collision Algorithm
 	start = system_clock::now();
